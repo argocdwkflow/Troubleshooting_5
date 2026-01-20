@@ -7,3 +7,14 @@ As a result, multiple DataNodes generated a high volume of simultaneous write op
 No infrastructure fault was identified. The root cause is related to Hadoop capacity management and workload behavior under reduced HDFS free space.
 Recommended actions include freeing HDFS space, reviewing quotas, and improving capacity monitoring.
 If you want, I can also provide a short executive version or a customer-friendly email format.
+
+
+Here is a clear, professional 150-word explanation in English, ready to be pasted into ServiceNow or sent to the client:
+Root Cause Analysis – vSAN Write Latency (Hadoop Cluster)
+On January 19th between 15:50 and 16:05, a temporary increase in vSAN write latency was observed on the Hadoop cluster.
+Detailed analysis shows that the Linux operating system and the underlying infrastructure were healthy, with no CPU, memory, or local disk saturation.
+The Hadoop DataNode logs reported repeated WRITE_BLOCK errors during the same period. Although the Linux filesystem /hadoop was used at approximately 75%, which is acceptable at OS level, the effective available space at the HDFS layer dropped below critical thresholds. This triggered HDFS write retries, increased spill activity, and block replication pressure.
+As a result, multiple DataNodes generated a high volume of simultaneous write operations, causing a temporary congestion on the vSAN backend and increased write latency.
+No infrastructure fault was identified. The root cause is related to Hadoop capacity management and workload behavior under reduced HDFS free space.
+Recommended actions include freeing HDFS space, reviewing quotas, and improving capacity monitoring.
+If you want, I can also provide a short executive version or a customer-friendly email format.
