@@ -34,3 +34,17 @@ Si tu veux, je peux aussi te fournir :
 une version très courte (executive / client)
 une conclusion finale de clôture
 un plan d’actions préventif
+
+
+
+
+g------------
+
+Root Cause Analysis – vSAN Write Latency and CPU Saturation on Hadoop Cluster
+On January 19th, multiple performance anomalies were observed on the Hadoop production cluster, all sharing the same root cause.
+Between 10:36 and 12:35, Dynatrace detected a CPU saturation event on host s02vl9932901.fr.net.intra. The saturation was mainly driven by CPU user time, indicating an application-level workload rather than an operating system or infrastructure issue. This behavior is consistent with intensive Hadoop processing, such as Spark or MapReduce jobs, compression tasks, and retry mechanisms.
+Later the same day, between 15:50 and 16:05, a temporary increase in vSAN write latency was detected. During this period, Dynatrace reported a slow disk event on filesystem /hadoop, with disk write time peaking above 250 ms. Hadoop DataNode logs confirmed repeated WRITE_BLOCK errors.
+Although the Linux filesystem /hadoop was used at approximately 75%, which is acceptable at OS level, the effective available space at the HDFS layer dropped below safe thresholds. This situation triggered HDFS write retries, increased spill activity, and block replication pressure. Consequently, multiple DataNodes generated a high volume of concurrent write operations, leading to temporary backend congestion on vSAN.
+No hardware, operating system, storage, or virtualization defect was identified.
+The root cause is Hadoop workload intensity combined with HDFS capacity pressure, which indirectly impacted backend storage performance.
+Recommended actions include freeing HDFS space, reviewing quotas and replication policies, optimizing job scheduling, and improving proactive capacity monitoring.
