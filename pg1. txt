@@ -1,5 +1,0 @@
-The difference in how pg_repack is delivered between RHEL 8 and RHEL 9 is driven by Red Hat’s packaging model evolution.
-RHEL 8 relies on AppStream Modularity, where PostgreSQL is provided as a module with versioned streams. As a result, pg_repack is built and shipped as a module-dependent package, tightly coupled to the enabled PostgreSQL stream (e.g. pg_repack_13.module+el8).
-
-Starting with RHEL 9, Red Hat removed PostgreSQL modularity and reverted to a simpler RPM-based model, closer to upstream and PGDG standards. Consequently, pg_repack is now delivered as a versioned standalone RPM (e.g. pg_repack_15), without any module dependency.
-This change significantly reduces operational complexity, avoids module conflicts, and improves long-term maintainability and alignment with enterprise PostgreSQL ecosystems.
