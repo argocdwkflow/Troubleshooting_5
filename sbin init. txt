@@ -13,3 +13,7 @@ boot failures,
 unstable service behavior,
 or unexpected runtime anomalies.
  In summary, /sbin/init is a critical component of the Linux boot process, and any modification or corruption of this link directly impacts overall system stability.
+
+
+When a Linux system boots into emergency mode, it usually indicates a critical failure during early system initialization, often related to filesystem or core OS components. One common root cause is missing or corrupted symbolic links such as /sbin/init, /bin, /sbin, /lib, or /lib64, which are required by systemd and essential system binaries.
+The resolution consists of booting into emergency mode or rescue environment, verifying the standard Red Hat filesystem layout, and recreating the missing symbolic links pointing to /usr. Once the links are restored, systemd can initialize properly, services start normally, and the system exits emergency mode. This corrective action restores OS consistency and system stability. 
