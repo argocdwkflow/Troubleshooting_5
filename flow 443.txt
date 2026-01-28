@@ -1,5 +1,0 @@
-I’d like to inform the N2 team about an ongoing activity.
-I’m currently checking the pre-prod servers that are already registered in Satellite via the non-prod capsule VIP.
-Following a policy change from the Illumio team, pre-prod servers are now considered as production servers and must therefore be treated as part of the production environment.
-As a result of this change, some pre-prod servers are no longer able to synchronize with the non-prod capsule.
-My objective is to identify and list these impacted pre-prod servers, and then re-register them from the non-prod capsule VIP to the production capsule VIP in Satellite, once the network flows are fully aligned.
