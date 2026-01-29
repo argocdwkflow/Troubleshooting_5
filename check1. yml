@@ -1,0 +1,3 @@
+- name: Skip host if marked unreachable
+  ansible.builtin.meta: end_host
+  when: skip_host | default(false)
