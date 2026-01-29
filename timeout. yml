@@ -1,0 +1,30 @@
+- hosts: all
+  strategy: free
+  gather_facts: false
+  any_errors_fatal: false
+  ignore_unreachable: true
+
+  vars:
+    ansible_ssh_common_args: "-o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1"
+    ansible_timeout: 10
+
+  pre_tasks:
+    - name: Fast SSH check (hard timeout)
+      ansible.builtin.wait_for_connection:
+        timeout: 6
+      register: ssh_check
+      failed_when: false
+
+    - name: Mark host as unreachable
+      ansible.builtin.set_fact:
+        skip_host: true
+      when: ssh_check is failed
+
+    - name: Stop early for unreachable hosts
+      ansible.builtin.meta: end_host
+      when: skip_host | default(false)
+
+  tasks:
+    - name: Register new host
+      block:
+        # ... ton contenu existant inchangé ...
