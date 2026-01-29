@@ -1,0 +1,16 @@
+- hosts: all
+  strategy: free
+  gather_facts: false
+  any_errors_fatal: false
+  ignore_unreachable: true
+
+  pre_tasks:
+    - name: Fast SSH check (no password wait)
+      ansible.builtin.wait_for_connection:
+        timeout: 8
+      register: ssh_check
+      failed_when: false
+
+    - name: Skip host if SSH is not reachable
+      ansible.builtin.meta: end_host
+      when: ssh_check is failed
