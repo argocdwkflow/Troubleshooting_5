@@ -1,0 +1,6 @@
+Si tu veux supporter aussi “Red Hat Enterprise Linux” (parfois remonté différemment selon context), tu peux remplacer la condition RedHat par :
+Copy code
+Yaml
+when: (ansible_facts.get('distribution', '') | lower) not in ['redhat', 'red hat enterprise linux']
+Mais en général distribution == "RedHat" suffit sur RHEL.
+Si tu veux, envoie-moi la partie pre_tasks / header du playbook : je te donne aussi la version “fast ssh check” lint-compliant pour skipper immédiatement les
