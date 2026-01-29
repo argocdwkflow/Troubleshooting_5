@@ -1,0 +1,10 @@
+---
+ansible_ssh_common_args: >-
+  -o BatchMode=yes
+  -o PasswordAuthentication=no
+  -o KbdInteractiveAuthentication=no
+  -o PreferredAuthentications=publickey
+  -o PubkeyAuthentication=yes
+  -o NumberOfPasswordPrompts=0
+  -o ConnectTimeout=5
+  -o ConnectionAttempts=1
