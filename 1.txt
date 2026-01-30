@@ -1,2 +1,0 @@
-I’ve identified 83 non-prod machines that currently cannot reach the Satellite capsule on port 443.
-The issue has been raised with the Illumio team, and we’re waiting for their feedback.
