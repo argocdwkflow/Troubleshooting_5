@@ -1,0 +1,1 @@
+rpm -q kernel --qf '%{NAME}-%{VERSION}-%{RELEASE} %{INSTALLTIME:date}\n'
