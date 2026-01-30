@@ -1,0 +1,14 @@
+
+Durant les deux derniers jours, j’ai procédé à l’enregistrement d’environ 300 machines non-production sur Red Hat Satellite.
+Parmi celles-ci, 200 machines ont été enregistrées avec succès, tandis que 83 machines restantes ont nécessité l’ouverture de flux réseau par l’équipe Illumio ainsi que la création de tickets INC auprès de l’équipe Password.
+L’analyse a montré que ces 83 serveurs rencontrent principalement :
+des insuffisances d’espace disque (/opt, /var),
+et d’autres erreurs techniques diverses.
+J’ai consolidé l’ensemble de ces informations (type d’erreur, serveur concerné, statut) dans un fichier Excel, afin de faciliter le troubleshooting et le suivi des actions correctives sur les serveurs restants.
+Par ailleurs, j’ai reçu deux demandes de l’équipe IBMz et AIX concernant la mise en place des repositories RHEL 9.6 (sujet actuellement en cours).
+J’ai également échangé avec Florian au sujet de la création des repositories SAP sur Red Hat Satellite.
+Concernant l’infrastructure Satellite :
+Une intervention de resizing sur Red Hat Satellite Production ainsi que l’ajout d’un index (optimisation) sur la base PostgreSQL sont planifiés dimanche prochain, de minuit à 03h00.
+Le sujet “missing client” sur Kibastics est également en cours de traitement.
+La remédiation liée à l’extension du filesystem /var/cache/yum sur l’ensemble des serveurs non-prod est en cours.
+Enfin, concernant la mise en place du cluster Veritas sur RHEL 9.6, j’ai démarré l’étude technique et je prévois de faire un point de cadrage avec Med afin de partager les premières conclusions et aligner les prochaines étapes.
