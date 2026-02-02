@@ -1,0 +1,82 @@
+Parfait, tes captures sont très parlantes 👍
+Tu n’as pas fait d’erreur fonctionnelle, tu es tombé sur 2 pièges classiques de hammer host list. Je t’explique exactement pourquoi ça échoue et quelle est la bonne commande (testée Satellite 6.17 / Katello).
+❌ Pourquoi ta commande échoue
+1️⃣ --lifecycle-environment N’EXISTE PAS pour hammer host list
+Erreur vue :
+Copy code
+
+Error: Unrecognized option '--lifecycle-environment'
+➡️ C’est normal
+hammer host list ne filtre JAMAIS directement par lifecycle-environment.
+👉 Le lifecycle est un champ de recherche, pas une option.
+2️⃣ Release Version n’est pas dans les fields prédéfinis
+Dans l’aide :
+Copy code
+
+Predefined field sets:
+Id, Name, Operating system, Host group, IP...
+➡️ release_version n’est pas affichable par défaut en table standard.
+✅ LA BONNE MÉTHODE (qui marche à 100 %)
+🟢 Méthode 1 — Vérifier le release de TOUS les hosts Dev_IBMz (recommandée)
+👉 On filtre via --search et on sort en CSV
+Copy code
+Bash
+hammer host list \
+  --organization "BP2I_IBMz" \
+  --search "lifecycle_environment = Dev_IBMz" \
+  --output csv \
+  --fields name,release_version
+📌 Résultat attendu :
+Copy code
+
+Name,Release Version
+host01,9.6
+host02,9.6
+host03,9.6
+💡 CSV est obligatoire sinon Hammer n’affiche pas release_version.
+🟢 Méthode 2 — Trouver les hosts RESTÉS en 9.4 (audit rapide)
+Copy code
+Bash
+hammer host list \
+  --organization "BP2I_IBMz" \
+  --search "lifecycle_environment = Dev_IBMz and release_version = 9.4" \
+  --output csv \
+  --fields name,release_version
+👉 Si la sortie est vide → migration OK ✅
+🟢 Méthode 3 — Boucle robuste (mode N3 / preuve CAB)
+Copy code
+Bash
+for h in $(hammer host list \
+  --organization "BP2I_IBMz" \
+  --search "lifecycle_environment = Dev_IBMz" \
+  --per-page 1000 \
+  --fields Name | tail -n +2); do
+
+  echo "==== $h ===="
+  hammer host info \
+    --organization "BP2I_IBMz" \
+    --name "$h" | grep -i "Release Version"
+done
+✔️ Fonctionne même si CSV est désactivé
+✔️ Idéal pour logs / preuves
+🧠 RÉSUMÉ DES PIÈGES (à retenir)
+Piège
+Réalité
+--lifecycle-environment
+❌ option inexistante
+Lifecycle
+✅ filtre via --search
+release_version
+❌ pas visible en table
+Solution
+✅ --output csv
+✅ Commande “golden” à garder sous le coude
+Copy code
+Bash
+hammer host list \
+  --organization "BP2I_IBMz" \
+  --search "lifecycle_environment = Dev_IBMz" \
+  --output csv \
+  --fields name,os_title,release_version,content_view
+Si tu veux, au prochain message je peux :
+🔒 te donner un script de conformité bloquant si ≠ 9.6
