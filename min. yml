@@ -1,9 +1,0 @@
-- name: Build activation key (clean, no spaces)
-  ansible.builtin.set_fact:
-    satellite_register_ak: >-
-      {{ ('RHEL' ~ satellite_register_major_version
-          ~ ((satellite_register_minor_version | default('') | string | length) > 0
-             | ternary(satellite_register_minor_version, ''))
-          ~ '-' ~ satellite_register_arch
-          ~ '-' ~ satellite_register_env_mapping[satellite_register_env]
-         ) | regex_replace('\s+', '') }}
