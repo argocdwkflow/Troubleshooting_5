@@ -4,3 +4,45 @@
       RHEL{{ satellite_register_major_version }}{{ satellite_register_minor_version }}
       -{{ satellite_register_arch }}
       -{{ satellite_register_env_mapping[satellite_register_env] }}
+
+
+----
+Oui ✅ on peut faire une règle simple :
+si minor est fourni → AK = RHEL{{ major }}{{ minor }}-{{ arch }}-{{ env }}
+si minor est vide / non défini → AK = RHEL{{ major }}-{{ arch }}-{{ env }} (major only)
+Voici un bloc prêt à copier.
+1) Construire l’Activation Key (minor optionnel)
+Yaml
+Copy code
+- name: Build activation key (minor optional)
+  ansible.builtin.set_fact:
+    satellite_register_ak: >-
+      RHEL{{ satellite_register_major_version }}{% if (satellite_register_minor_version | default('') | string | length) > 0 %}{{ satellite_register_minor_version }}{% endif %}
+      -{{ satellite_register_arch }}
+      -{{ satellite_register_env_mapping[satellite_register_env] }}
+Exemples
+major=9, minor=4 → RHEL94-x86_64-NONPROD
+major=9, minor="" → RHEL9-x86_64-NONPROD
+2) Register RHSM (corrigé avec argv, sans =)
+Yaml
+Copy code
+- name: RHSM | Register (safe, NO shell, argv)
+  ansible.builtin.command:
+    argv:
+      - subscription-manager
+      - register
+      - --activationkey
+      - "{{ satellite_register_ak | trim }}"
+      - --org
+      - "{{ satellite_register_org | trim }}"
+      - "{{ (satellite_register_force | default(false)) | ternary('--force', omit) }}"
+  register: rhsm_register
+  failed_when: rhsm_register.rc != 0
+3) Petit debug utile
+Yaml
+Copy code
+- debug:
+    msg:
+      - "AK_USED={{ satellite_register_ak }}"
+      - "ORG={{ satellite_register_org }}"
+Si tu me montres comment tu définis actuellement satellite_register_minor_version (ex: depuis facts OS, ou variable user input), je te donne la version la plus “clean” (avec normalisation 9.4 → 4 automatiquement, ou 9.10 → 10).
