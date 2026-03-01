@@ -36,3 +36,22 @@ foreman::puma::threads_max: 16
 
 # --- Pulp (à valider selon ton besoin) ---
 pulpcore::worker::concurrency: 10
+
+###capsule
+max_worker_processes = 16
+max_parallel_workers = 8
+max_parallel_workers_per_gather = 2
+max_parallel_maintenance_workers = 2
+
+autovacuum = on
+autovacuum_max_workers = 4
+autovacuum_naptime = 20s
+autovacuum_vacuum_cost_limit = 2000
+autovacuum_vacuum_scale_factor = 0.05
+autovacuum_analyze_scale_factor = 0.05
+
+
+shared_buffers = 8GB
+effective_cache_size = 28GB
+work_mem = 16MB
+maintenance_work_mem = 1GB
