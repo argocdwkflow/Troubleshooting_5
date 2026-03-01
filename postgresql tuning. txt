@@ -1,0 +1,38 @@
+# /etc/foreman-installer/custom-hiera.yaml
+
+# --- PostgreSQL ---
+postgresql::server::config_entries:
+  max_connections: 1000
+  shared_buffers: 48GB
+  work_mem: 64MB
+  effective_cache_size: 120GB
+  maintenance_work_mem: 2GB
+
+  max_worker_processes: 32
+  max_parallel_workers: 16
+  max_parallel_workers_per_gather: 4
+  max_parallel_maintenance_workers: 4
+
+  autovacuum: 'on'
+  autovacuum_max_workers: 6
+  autovacuum_naptime: 20s
+  autovacuum_vacuum_cost_limit: 4000
+  autovacuum_vacuum_scale_factor: 0.05
+  autovacuum_analyze_scale_factor: 0.03
+
+# --- Apache event MPM (si tu veux) ---
+apache::mod::event::serverlimit: 64
+apache::mod::event::maxrequestworkers: 1024
+apache::mod::event::maxrequestsperchild: 4000
+
+# --- Dynflow (si tu veux) ---
+foreman::dynflow::executor_concurrency: 24
+foreman::dynflow::worker_concurrency: 24
+
+# --- Puma (si tu veux) ---
+foreman::puma::workers: 24
+foreman::puma::threads_min: 12
+foreman::puma::threads_max: 16
+
+# --- Pulp (à valider selon ton besoin) ---
+pulpcore::worker::concurrency: 10
