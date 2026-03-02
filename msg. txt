@@ -1,0 +1,108 @@
+Bonjour,
+
+Au cours des derniers jours, plusieurs actions d’optimisation avancée ont été réalisées sur la plateforme Red Hat Satellite 6.17 ainsi que sur les 4 serveurs Capsules (Prod et Non-Prod), dans l’objectif d’améliorer la performance globale, la stabilité sous forte charge et la scalabilité long terme.
+
+---
+
+🔹 Optimisation système (Satellite & Capsules)
+
+Conformément aux bonnes pratiques Red Hat :
+
+- Désactivation du Transparent Huge Pages (THP) afin d’améliorer les performances PostgreSQL et Redis.
+- Ajustement du profil tuned (virtual-guest / throughput-performance selon le contexte VM).
+- Optimisation des paramètres kernel :
+  - vm.swappiness (réduction de l’usage prématuré du swap)
+  - vm.dirty_ratio et vm.dirty_background_ratio (meilleure gestion des écritures disque)
+  - vm.overcommit_memory (contrôle allocation mémoire)
+- Vérification comportement NUMA afin d’éviter la latence mémoire en environnement multi-CPU.
+- Validation des performances I/O disque pour garantir un débit conforme aux recommandations.
+
+---
+
+🔹 Tuning applicatif Satellite
+
+Puma (Foreman)
+
+- Ajustement du nombre de workers et threads selon le profil matériel (approche extra-large).
+- Amélioration de la capacité à absorber les enregistrements concurrents.
+
+Apache httpd
+
+- Ajustement des paramètres serverlimit, maxrequestworkers et proxy_timeout afin d’éviter les erreurs HTTP 503 en cas de pic de charge.
+
+Dynflow / Sidekiq
+
+- Augmentation du nombre d’instances workers pour améliorer le traitement des tâches massives (publish, promote, synchronisations Capsules).
+- Réduction significative du backlog.
+
+PostgreSQL
+
+- Ajustement des paramètres : max_connections, shared_buffers, work_mem et autovacuum_vacuum_cost_limit.
+- Stabilisation de la charge CPU liée aux requêtes volumineuses.
+
+Redis
+
+- Vérification cohérence cache et stabilité mémoire.
+
+---
+
+🔹 Optimisation Capsules
+
+- Vérification dimensionnement CPU/RAM.
+- Stabilisation synchronisations Satellite → Capsules.
+- Ajustement paramètres Remote Execution pull-based si nécessaire.
+- Validation communication SSL via VIP.
+- Amélioration comportement sous forte concurrence (downloads / REX).
+
+---
+
+🔹 Résultats observés
+
+- Diminution significative des tâches bloquées et en erreur.
+- Amélioration de la réactivité de l’interface Satellite.
+- Stabilisation CPU sous forte charge.
+- Réduction des erreurs HTTP 503.
+- Meilleure fluidité des synchronisations et publications.
+
+---
+
+🔹 Propositions d’amélioration continue
+
+Afin de maintenir ces performances dans la durée et de réduire la pression sur la base PostgreSQL, je propose la mise en place des actions suivantes :
+
+1️⃣ Nettoyage automatique et gouvernance des données
+
+- Mise en place de tâches planifiées pour supprimer :
+  - Les tasks en erreur ou stopped datant de plus d’une semaine.
+  - Les tasks orphelines (dynflow/foreman_tasks sans référence active).
+- Suppression automatique des anciennes versions de Content View et Composite Content View.
+- Conservation uniquement des deux dernières versions avec une politique de rétention d’une semaine.
+
+Objectif : réduire la volumétrie de la base PostgreSQL, limiter la fragmentation des index et éviter l’accumulation d’objets inutiles impactant les performances.
+
+---
+
+2️⃣ Optimisation avancée PostgreSQL
+
+- Affinage du paramétrage autovacuum pour accélérer le nettoyage des dead tuples.
+- Planification d’opérations REINDEX ciblées sur les tables volumineuses (foreman_tasks, katello tables, pulp).
+- Réalisation préalable d’un snapshot VMware de la VM Satellite comme mesure de précaution.
+
+Objectif : améliorer la performance des requêtes et réduire la fragmentation interne de la base.
+
+---
+
+3️⃣ Migration vers Satellite 6.18
+
+Je recommande également la planification d’une migration vers Satellite 6.18 afin de :
+
+- Bénéficier des correctifs performance et stabilité.
+- Réduire les risques liés aux bugs connus de la 6.17.
+- Améliorer la maintenabilité et la scalabilité long terme.
+
+---
+
+Un monitoring renforcé restera actif afin d’évaluer l’impact de ces optimisations et ajuster si nécessaire.
+
+Cordialement,
+[Vot
