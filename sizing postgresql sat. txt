@@ -1,0 +1,65 @@
+Très bonne question 👍
+Sur Satellite, tu as généralement plusieurs bases (ex : foreman, candlepin, pulpcore, etc.).
+Pour connaître la taille exacte de chaque database, voici les commandes propres.
+ 1️⃣ Voir la taille de chaque database
+Connecte-toi en postgres :
+Bash
+Copy code
+su - postgres
+psql
+Puis :
+SQL
+Copy code
+SELECT datname AS database,
+       pg_size_pretty(pg_database_size(datname)) AS size
+FROM pg_database
+ORDER BY pg_database_size(datname) DESC;
+👉 Tu verras par exemple :
+Copy code
+
+foreman    | 180 GB
+ pulpcore   | 75 GB
+ candlepin  | 5 GB
+ template1  | 8 MB
+🎯 2️⃣ Version rapide en une seule commande
+Bash
+Copy code
+sudo -u postgres psql -c "
+SELECT datname,
+       pg_size_pretty(pg_database_size(datname))
+FROM pg_database
+ORDER BY pg_database_size(datname) DESC;"
+🎯 3️⃣ Voir la taille détaillée par database spécifique
+Exemple pour foreman :
+Bash
+Copy code
+sudo -u postgres psql -d foreman -c "
+SELECT relname AS table,
+       pg_size_pretty(pg_total_relation_size(relid)) AS total_size
+FROM pg_catalog.pg_statio_user_tables
+ORDER BY pg_total_relation_size(relid) DESC
+LIMIT 20;"
+Ça te montre les 20 plus grosses tables.
+🎯 4️⃣ Voir taille totale PostgreSQL (répertoire physique)
+Pour comparer avec /var/lib/pgsql :
+Bash
+Copy code
+du -sh /var/lib/pgsql/data
+💡 Interprétation dans ton cas Satellite
+En général :
+foreman = la plus grosse
+pulpcore = très grosse si beaucoup de content
+candlepin = moyenne
+WAL (pg_wal) peut représenter plusieurs dizaines de Go
+ Important dans ton contexte
+Comme tu as une alerte :
+/var/lib/pgsql < 10% free
+Il faut absolument vérifier :
+Bash
+Copy code
+du -sh /var/lib/pgsql/data/pg_wal
+Si pg_wal > 50GB → c’est probablement ça qui a explosé.
+Si tu m’envoies le résultat de :
+Bash
+Copy code
+sudo -u postgres psql -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) FROM pg_database ORDER BY pg_database_size(datname) DESC;"
