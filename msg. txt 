@@ -1,0 +1,8 @@
+Voici une reformulation plus fluide et professionnelle de ton message :
+Bonjour 
+Il n’est finalement pas nécessaire d’ouvrir un case chez Red Hat. J’ai trouvé la solution pour effectuer le leapp upgrade de la version 8.10 vers RHEL 9.6 via le CCV.
+Désolé de ne pas avoir pris le sujet dès le début hier, j’étais focalisé sur Veritas et le ticket d’audit.
+Et tous les deux, n’oubliez pas les chocolats comme prévu 😉
+Commande utilisée :
+leapp preupgrade --target 9.6
+Si tu veux, je peux aussi te faire une version plus formelle (manager style) ou plus courte pour Teams.
