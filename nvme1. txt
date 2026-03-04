@@ -141,3 +141,20 @@ multiple LV pour tempdb
 I/O queue tuning
 Cela peut améliorer 30-60% les performances.
 Si tu veux, je peux aussi te montrer l’architecture Sybase ASE optimale utilisée dans les banques (NVMe + tempdb tuning).
+
+
+
+Voici un résumé clair que tu peux envoyer à ton chef (court, professionnel) :
+Subject: NVMe Storage Optimization for Sybase Temporary Filesystems
+As part of the storage performance optimization on this server, we reviewed the current configuration of the two NVMe disks (nvme0n1 and nvme1n1) used for Sybase temporary and dump filesystems.
+To improve both performance and resilience, we implemented a mirrored RAID1 configuration using LVM across the two NVMe devices. This setup ensures data redundancy while allowing both disks to participate efficiently in I/O operations.
+Two logical volumes of 30 GB each were created within the volume group vg_tempdb:
+/apps/sybase/dump/ESY3_FR_UAT_ASE
+/apps/sybasetmp/ESY3_FR_UAT_ASE
+Both filesystems are formatted with XFS and mounted with optimized parameters suitable for database workloads.
+This architecture provides:
+High I/O performance leveraging NVMe capabilities
+Data protection through RAID1 mirroring
+Flexibility for future storage expansion via LVM
+The configuration has been verified and is ready for production use.
+Si tu veux, je peux aussi te faire une version encore plus “manager style” (5 lignes) ou une version très technique pour DBA / SAN team.
