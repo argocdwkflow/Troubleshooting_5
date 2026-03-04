@@ -1,0 +1,143 @@
+Parfait 👍
+Pour Sybase ASE sur NVMe, la meilleure architecture n’est souvent pas mdadm RAID1, mais LVM RAID1 ou LVM striped mirror, car :
+meilleure gestion du queue depth NVMe
+meilleur parallelisme I/O
+moins de couche software
+plus flexible pour extend LV
+Je te montre l’architecture recommandée pour ton cas.
+1️⃣ Architecture recommandée (Enterprise DB)
+Avec tes deux NVMe :
+Id="x8fx1a"
+Copy code
+nvme0n1        nvme1n1
+   │               │
+   └──────┬────────┘
+          │
+        LVM
+      vg_tempdb
+          │
+   LVM RAID1 LV
+      (mirror)
+          │
+   Filesystem XFS
+Donc on supprime mdadm et on laisse LVM gérer le RAID.
+Avantages :
+meilleur scheduling I/O
+monitoring plus simple
+rebuild plus rapide
+extension facile
+2️⃣ Préparer les disques
+Bash
+Copy code
+wipefs -a /dev/nvme0n1
+wipefs -a /dev/nvme1n1
+Créer PV :
+Bash
+Copy code
+pvcreate /dev/nvme0n1
+pvcreate /dev/nvme1n1
+3️⃣ Créer le Volume Group
+Bash
+Copy code
+vgcreate vg_tempdb /dev/nvme0n1 /dev/nvme1n1
+4️⃣ Créer un LV en RAID1 (mirroring)
+Pour ton sybtemp :
+Bash
+Copy code
+lvcreate --type raid1 \
+-m1 \
+-L 30G \
+-n lv_ESY3_FR_UAT_ASE_sybtemp \
+vg_tempdb
+Pour ton sybasetmp :
+Bash
+Copy code
+lvcreate --type raid1 \
+-m1 \
+-L 30G \
+-n lv_ESY3_FR_UAT_ASE_sybtpmp \
+vg_tempdb
+-m1 = miroir.
+5️⃣ Vérifier le RAID LVM
+Bash
+Copy code
+lvs -a -o +devices
+Résultat attendu :
+Id="ihwcyb"
+Copy code
+LV                      VG        Attr       LSize
+lv_ESY3_FR_UAT_ASE      vg_tempdb rwi-a-r--- 30.00g
+6️⃣ Créer filesystem
+Pour base de données :
+Bash
+Copy code
+mkfs.xfs -f /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtemp
+mkfs.xfs -f /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtpmp
+7️⃣ Créer les mountpoints
+Bash
+Copy code
+mkdir -p /apps/sybase/dump/ESY3_FR_UAT_ASE
+mkdir -p /apps/sybasetmp/ESY3_FR_UAT_ASE
+8️⃣ Monter les FS
+Bash
+Copy code
+mount /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtemp /apps/sybase/dump/ESY3_FR_UAT_ASE
+mount /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtpmp /apps/sybasetmp/ESY3_FR_UAT_ASE
+9️⃣ fstab optimisé
+Id="jry4gb"
+Copy code
+/dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtemp  /apps/sybase/dump/ESY3_FR_UAT_ASE  xfs  defaults,noatime,nodiratime,logbufs=8 0 0
+/dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtpmp  /apps/sybasetmp/ESY3_FR_UAT_ASE    xfs  defaults,noatime,nodiratime,logbufs=8 0 0
+🔟 Optimisation NVMe (important)
+Scheduler :
+Bash
+Copy code
+cat /sys/block/nvme0n1/queue/scheduler
+doit être :
+Id="98sq2q"
+Copy code
+none
+sinon :
+Bash
+Copy code
+echo none > /sys/block/nvme0n1/queue/scheduler
+echo none > /sys/block/nvme1n1/queue/scheduler
+1️⃣1️⃣ Read ahead tuning
+Pour base de données :
+Bash
+Copy code
+blockdev --setra 4096 /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtemp
+blockdev --setra 4096 /dev/vg_tempdb/lv_ESY3_FR_UAT_ASE_sybtpmp
+1️⃣2️⃣ Vérifier I/O
+Bash
+Copy code
+iostat -x 1
+ou
+Bash
+Copy code
+nvme list
+⚡ Résultat
+Architecture finale :
+Id="a3o0ts"
+Copy code
+nvme0n1       nvme1n1
+   │              │
+   └──────┬───────┘
+          │
+        VG
+      vg_tempdb
+          │
+     RAID1 LV
+          │
+        XFS
+          │
+   /apps/sybase/*
+✔️ haute performance
+✔️ mirroring
+✔️ LVM flexible
+💡 Dans les grosses bases Sybase / Oracle / SAP, on va encore plus loin avec :
+LVM RAID10
+multiple LV pour tempdb
+I/O queue tuning
+Cela peut améliorer 30-60% les performances.
+Si tu veux, je peux aussi te montrer l’architecture Sybase ASE optimale utilisée dans les banques (NVMe + tempdb tuning).
