@@ -1,0 +1,82 @@
+Très bien 👍
+Pour vérifier si ton RAID1 LVM lit vraiment sur les deux NVMe, il existe une méthode simple utilisée en diagnostic performance Linux.
+Le principe : regarder les I/O sur chaque disque physique.
+1️⃣ Installer l’outil iostat (si pas déjà)
+Bash
+Copy code
+dnf install sysstat
+2️⃣ Observer les I/O en temps réel
+Lance :
+Bash
+Copy code
+iostat -dxm 1 nvme1n1 nvme2n1
+Exemple de sortie :
+Copy code
+
+Device       r/s     w/s   rkB/s   wkB/s  %util
+nvme1n1      800     400   25000   12000   35
+nvme2n1      780     410   24800   12100   34
+Interprétation
+Situation
+Signification
+Les deux disques lisent
+RAID1 bien équilibré
+Un seul disque lit
+LVM ne répartit pas la lecture
+3️⃣ Test réel avec lecture disque
+Tu peux générer de la lecture :
+Bash
+Copy code
+dd if=/apps/sybasetmp/testfile of=/dev/null bs=1M
+ou
+Bash
+Copy code
+fio --name=test --rw=read --size=2G --filename=/apps/sybasetmp/testfile
+Puis regarder iostat.
+4️⃣ Vérifier la politique de lecture LVM
+Commande :
+Bash
+Copy code
+lvs -o lv_name,raid_read_balance
+Exemple :
+Copy code
+
+LV                               Raid_Read_Balance
+lv_ESY3_FR_UAT_ASE_sybetmp       roundrobin
+Si ce n'est pas le cas :
+Bash
+Copy code
+lvchange --raidreadbalance roundrobin vg_tempdb/lv_ESY3_FR_UAT_ASE_sybetmp
+5️⃣ Vérifier le mirror LVM
+Bash
+Copy code
+lvs -a -o +devices
+Exemple :
+Copy code
+
+lv_ESY3_FR_UAT_ASE_sybetmp_rimage_0 /dev/nvme1n1p1
+lv_ESY3_FR_UAT_ASE_sybetmp_rimage_1 /dev/nvme2n1p1
+Cela confirme que chaque miroir utilise un NVMe.
+Résultat attendu
+Pendant lecture :
+Copy code
+
+nvme1n1  read actif
+nvme2n1  read actif
+Donc ton RAID1 double la performance en lecture.
+Résumé rapide
+Pour ton serveur Sybase optimal :
+Paramètre
+Valeur
+read_ahead
+4096
+scheduler
+none
+LVM read policy
+roundrobin
+filesystem
+XFS
+agcount
+32
+💡 Si tu veux, je peux aussi te montrer une commande Linux très puissante qui permet de voir l’utilisation réelle des files NVMe par CPU (outil utilisé par Red Hat Performance Team).
+C’est très impressionnant pour diagnostiquer les bases de données.
