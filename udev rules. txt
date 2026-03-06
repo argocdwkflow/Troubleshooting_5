@@ -1,0 +1,9 @@
+Rendre permanent (après reboot)
+Créer une règle udev :
+Bash
+Copy code
+/etc/udev/rules.d/60-nvme-scheduler.rules
+Contenu :
+Bash
+Copy code
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
