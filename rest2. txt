@@ -1,0 +1,378 @@
+Voici une version prête à copier-coller pour créer les deux fichiers (sysctl + udev) et appliquer immédiatement les réglages sur ton serveur RHEL + NVMe + LVM RAID1 + Sybase. ⚡
+1️⃣ Créer le fichier sysctl
+Bash
+Copy code
+cat <<'EOF' > /etc/sysctl.d/99-sybase-db.conf
+# Sybase / DB tuning
+vm.swappiness = 1
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+vm.dirty_expire_centisecs = 500
+vm.dirty_writeback_centisecs = 100
+EOF
+Appliquer :
+Bash
+Copy code
+sysctl --system
+Vérifier :
+Bash
+Copy code
+sysctl -a | egrep 'vm.swappiness|vm.dirty_ratio|vm.dirty_background_ratio|vm.dirty_expire_centisecs|vm.dirty_writeback_centisecs'
+2️⃣ Créer la règle udev NVMe
+Bash
+Copy code
+cat <<'EOF' > /etc/udev/rules.d/60-nvme-performance.rules
+# NVMe performance tuning for database workloads
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/read_ahead_kb}="4096"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/rq_affinity}="2"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/io_poll}="1"
+EOF
+Recharger les règles :
+Bash
+Copy code
+udevadm control --reload-rules
+udevadm trigger
+3️⃣ Vérifier que les paramètres sont appliqués
+Bash
+Copy code
+for d in /sys/block/nvme*n1; do
+  echo "===== $d ====="
+  echo "read_ahead_kb : $(cat $d/queue/read_ahead_kb)"
+  echo "rq_affinity   : $(cat $d/queue/rq_affinity)"
+  echo "io_poll       : $(cat $d/queue/io_poll)"
+  echo
+done
+Résultat attendu :
+Plain text
+Copy code
+read_ahead_kb : 4096
+rq_affinity   : 2
+io_poll       : 1
+4️⃣ Vérification rapide stockage
+Bash
+Copy code
+lsblk -d -o NAME,SCHED,RA
+lvs -a -o +devices
+xfs_info /apps/sybasetmp/ESY3_FR_UAT_ASE
+Configuration finale recommandée pour ton serveur
+Paramètre
+Valeur
+scheduler
+none
+read_ahead
+4096
+rq_affinity
+2
+io_poll
+1
+filesystem
+XFS
+agcount
+32
+LVM read policy
+roundrobin
+✅ Avec :
+Copy code
+
+NVMe
+   ↓
+LVM RAID1
+   ↓
+XFS optimisé
+   ↓
+Sybase
+ton stockage est optimisé pour bases de données.
+💡 Si tu veux, je peux aussi te donner une dernière vérification Red Hat très utile : une commande unique qui affiche tout le tuning NVMe + LVM + XFS de ton serveur en un seul écran (très pratique pour audit ou documentation).
+
+Voici une commande unique d’audit que beaucoup d’ingénieurs Linux utilisent pour voir en un seul écran le tuning NVMe + LVM + XFS de ton serveur.
+C’est très pratique pour documentation ou troubleshooting performance DB.
+Script d’audit stockage (NVMe + LVM + XFS)
+Bash
+Copy code
+echo "===== NVMe Devices ====="
+lsblk -d -o NAME,ROTA,SCHED,RA,DISC-MAX,DISC-GRAN
+
+echo
+echo "===== NVMe Queue Parameters ====="
+for d in /sys/block/nvme*n1; do
+  echo "--- $d ---"
+  printf "read_ahead_kb : %s\n" "$(cat $d/queue/read_ahead_kb 2>/dev/null)"
+  printf "rq_affinity   : %s\n" "$(cat $d/queue/rq_affinity 2>/dev/null)"
+  printf "io_poll       : %s\n" "$(cat $d/queue/io_poll 2>/dev/null)"
+  printf "scheduler     : %s\n" "$(cat $d/queue/scheduler 2>/dev/null)"
+  echo
+done
+
+echo "===== LVM Layout ====="
+pvs
+vgs
+lvs -a -o lv_name,vg_name,segtype,devices
+
+echo
+echo "===== Mounted Filesystems ====="
+df -hT | grep xfs
+
+echo
+echo "===== XFS Parameters ====="
+for m in $(df -hT | awk '/xfs/ {print $7}'); do
+  echo "--- $m ---"
+  xfs_info $m
+  echo
+done
+
+echo "===== Kernel VM Parameters ====="
+sysctl vm.swappiness vm.dirty_ratio vm.dirty_background_ratio vm.dirty_expire_centisecs vm.dirty_writeback_centisecs
+Exemple de sortie (résumé)
+Tu devrais voir quelque chose comme :
+Plain text
+Copy code
+===== NVMe Devices =====
+nvme1n1 0 none 4096
+nvme2n1 0 none 4096
+
+===== NVMe Queue Parameters =====
+read_ahead_kb : 4096
+rq_affinity   : 2
+io_poll       : 1
+
+===== LVM Layout =====
+lv_sybetmp  vg_tempdb  raid1  nvme1n1p1,nvme2n1p1
+
+===== XFS Parameters =====
+agcount=32
+sunit=64
+swidth=128
+Ce que cet audit confirme
+Élément
+Vérification
+NVMe tuning
+read_ahead / rq_affinity
+scheduler
+none
+RAID LVM
+raid1 actif
+XFS
+agcount / stripe align
+kernel
+dirty_ratio tuning
+Utilisation pratique
+Ce script permet :
+audit performance stockage
+diagnostic base de données
+documentation infrastructure
+vérification avant production.
+💡 Si tu veux, je peux aussi te donner une version encore plus avancée de ce script (style storage-health-check.sh) qui génère un rapport complet pour un serveur Linux base de données. C’est un outil très utile en environnement N3 / production.
+
+
+Voici une version plus avancée sous forme de script storage-health-check.sh prête à copier-coller.
+Bash
+Copy code
+cat <<'EOF' > /root/storage-health-check.sh
+#!/bin/bash
+
+echo "============================================================"
+echo " STORAGE HEALTH CHECK - NVMe / LVM / XFS / DB"
+echo " Host   : $(hostname)"
+echo " Date   : $(date)"
+echo " Kernel : $(uname -r)"
+echo "============================================================"
+echo
+
+echo "===== 1. BLOCK DEVICES ====="
+lsblk -d -o NAME,SIZE,MODEL,ROTA,SCHED,RA,PHY-SEC,LOG-SEC
+echo
+
+echo "===== 2. NVMe QUEUE PARAMETERS ====="
+for d in /sys/block/nvme*n1; do
+  [ -e "$d" ] || continue
+  dev="$(basename "$d")"
+  echo "--- $dev ---"
+  for f in read_ahead_kb rq_affinity io_poll io_poll_delay rotational \
+           max_sectors_kb minimum_io_size optimal_io_size physical_block_size \
+           logical_block_size write_cache; do
+    if [ -f "$d/queue/$f" ]; then
+      printf "%-22s : %s\n" "$f" "$(cat "$d/queue/$f" 2>/dev/null)"
+    fi
+  done
+  if [ -f "$d/queue/scheduler" ]; then
+    printf "%-22s : %s\n" "scheduler" "$(cat "$d/queue/scheduler" 2>/dev/null)"
+  else
+    printf "%-22s : %s\n" "scheduler" "not exposed (often normal on NVMe)"
+  fi
+  echo
+done
+
+echo "===== 3. PARTITIONS / FILESYSTEM TREE ====="
+lsblk -f
+echo
+
+echo "===== 4. LVM PHYSICAL VOLUMES ====="
+pvs
+echo
+
+echo "===== 5. LVM VOLUME GROUPS ====="
+vgs
+echo
+
+echo "===== 6. LVM LOGICAL VOLUMES ====="
+lvs -a -o lv_name,vg_name,lv_size,segtype,lv_attr,copy_percent,sync_percent,devices
+echo
+
+echo "===== 7. MOUNTED FILESYSTEMS ====="
+findmnt -t xfs,ext4
+echo
+
+echo "===== 8. XFS DETAILS ====="
+for m in $(findmnt -t xfs -n -o TARGET); do
+  echo "--- Mountpoint: $m ---"
+  xfs_info "$m" 2>/dev/null
+  echo
+done
+
+echo "===== 9. FSTAB ====="
+grep -Ev '^\s*#|^\s*$' /etc/fstab
+echo
+
+echo "===== 10. SYSCTL DB PARAMETERS ====="
+sysctl vm.swappiness \
+       vm.dirty_ratio \
+       vm.dirty_background_ratio \
+       vm.dirty_expire_centisecs \
+       vm.dirty_writeback_centisecs 2>/dev/null
+echo
+
+echo "===== 11. UDEV NVMe RULES ====="
+grep -R "nvme" /etc/udev/rules.d /usr/lib/udev/rules.d 2>/dev/null
+echo
+
+echo "===== 12. RAID / MIRROR STATE ====="
+lvs -a -o lv_name,vg_name,segtype,sync_percent,devices | egrep 'raid|mirror|LV'
+echo
+
+echo "===== 13. DISK USAGE ====="
+df -hT
+echo
+
+echo "===== 14. CURRENT I/O SNAPSHOT ====="
+if command -v iostat >/dev/null 2>&1; then
+  iostat -dxm 1 2
+else
+  echo "iostat not installed (package: sysstat)"
+fi
+echo
+
+echo "===== 15. FAILED SYSTEMD UNITS ====="
+systemctl --failed --no-pager
+echo
+
+echo "===== 16. BOOT / MOUNT SAFETY CHECK ====="
+echo "--- mount -a test ---"
+mount -a && echo "mount -a : OK" || echo "mount -a : FAILED"
+echo
+
+echo "===== 17. SUMMARY HINTS ====="
+echo "- Check Sync% = 100.00 for RAID1 LVM before reboot."
+echo "- Check XFS sunit/swidth values match expected alignment."
+echo "- Check read_ahead_kb, rq_affinity, io_poll for NVMe tuning."
+echo "- Check mount -a returns no error."
+echo "- Check no critical failed units before reboot."
+echo
+echo "============================================================"
+echo " END OF REPORT"
+echo "============================================================"
+EOF
+
+chmod +x /root/storage-health-check.sh
+Exécution :
+Bash
+Copy code
+/root/storage-health-check.sh
+Pour sauvegarder le rapport :
+Bash
+Copy code
+/root/storage-health-check.sh | tee /root/storage-health-check-$(date +%F-%H%M).log
+Si tu veux, je peux aussi te donner une version plus courte orientée reboot-safety uniquement.
+
+
+Voici une version courte orientée reboot-safety.
+Bash
+Copy code
+cat <<'EOF' > /root/reboot-safety-check.sh
+#!/bin/bash
+
+echo "=================================================="
+echo " REBOOT SAFETY CHECK"
+echo " Host   : $(hostname)"
+echo " Date   : $(date)"
+echo " Kernel : $(uname -r)"
+echo "=================================================="
+echo
+
+echo "===== 1. RAID / LVM SYNC ====="
+lvs -a -o lv_name,vg_name,segtype,sync_percent,devices
+echo
+
+echo "===== 2. FILESYSTEM MOUNTS ====="
+findmnt -t xfs,ext4
+echo
+
+echo "===== 3. FSTAB TEST ====="
+mount -a && echo "mount -a : OK" || echo "mount -a : FAILED"
+echo
+
+echo "===== 4. DISK SPACE ====="
+df -hT
+echo
+
+echo "===== 5. PV / VG / LV ====="
+pvs
+vgs
+lvs
+echo
+
+echo "===== 6. FAILED SERVICES ====="
+systemctl --failed --no-pager
+echo
+
+echo "===== 7. LAST ERRORS ====="
+journalctl -p err -n 30 --no-pager
+echo
+
+echo "===== 8. NVMe TUNING ====="
+for d in /sys/block/nvme*n1; do
+  [ -e "$d" ] || continue
+  echo "--- $(basename "$d") ---"
+  [ -f "$d/queue/read_ahead_kb" ] && echo "read_ahead_kb: $(cat "$d/queue/read_ahead_kb")"
+  [ -f "$d/queue/rq_affinity" ] && echo "rq_affinity  : $(cat "$d/queue/rq_affinity")"
+  [ -f "$d/queue/io_poll" ] && echo "io_poll      : $(cat "$d/queue/io_poll")"
+  [ -f "$d/queue/scheduler" ] && echo "scheduler    : $(cat "$d/queue/scheduler")"
+  echo
+done
+
+echo "===== 9. XFS INFO ====="
+for m in $(findmnt -t xfs -n -o TARGET); do
+  echo "--- $m ---"
+  xfs_info "$m" 2>/dev/null
+  echo
+done
+
+echo "===== 10. FINAL STATUS ====="
+echo "Reboot OK only if:"
+echo " - mount -a = OK"
+echo " - RAID1 Sync% = 100.00"
+echo " - no critical failed service"
+echo " - filesystems visible in findmnt/df"
+echo
+echo "=================================================="
+EOF
+
+chmod +x /root/reboot-safety-check.sh
+Exécution :
+Bash
+Copy code
+/root/reboot-safety-check.sh
+Pour sauvegarder le résultat :
+Bash
+Copy code
+/root/reboot-safety-check.sh | tee /root/reboot-safety-check-$(date +%F-%H%M).log
+Le critère principal avant reboot dans ton cas reste : mount -a sans erreur et Sync% = 100.00 sur les LV raid1.
