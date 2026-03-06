@@ -1,0 +1,62 @@
+Pour réinitialiser le mot de passe admin sur un serveur Red Hat Satellite, il existe 2 méthodes sûres selon la situation. Dans un environnement production (comme ton infra Satellite avec capsules), la méthode recommandée est via foreman-rake.
+1️⃣ Méthode recommandée : foreman-rake (sans casser la config)
+Connecte-toi sur le serveur Satellite en root.
+Commande
+Bash
+Copy code
+foreman-rake permissions:reset password=NewStrongPassword user=admin
+Exemple
+Bash
+Copy code
+foreman-rake permissions:reset password='MyNewPassword123!' user=admin
+Cela va :
+réinitialiser le mot de passe
+garder tous les rôles et permissions
+ne pas impacter la configuration Satellite
+2️⃣ Méthode alternative : via console Rails
+Si la première méthode ne marche pas.
+Lancer console
+Bash
+Copy code
+foreman-rake console
+Puis dans la console :
+Ruby
+Copy code
+u = User.find_by(login: 'admin')
+u.password = 'NewStrongPassword123!'
+u.password_confirmation = 'NewStrongPassword123!'
+u.save!
+exit
+3️⃣ Vérifier ensuite
+Tester la connexion UI :
+Copy code
+
+https://satellite-fqdn
+Login :
+Copy code
+
+admin
+NewStrongPassword123!
+4️⃣ Vérifier si le compte est lock
+Si plusieurs tentatives échouées :
+Bash
+Copy code
+foreman-rake permissions:reset
+ou :
+Bash
+Copy code
+hammer user update --login admin --disabled false
+5️⃣ Vérifier utilisateurs Satellite
+Bash
+Copy code
+hammer user list
+⚠️ Bonnes pratiques production (important)
+Dans les environnements comme les tiens (Satellite + capsules + 40k hosts) :
+garder un compte admin de secours
+utiliser LDAP / AD authentication
+stocker les credentials dans vault sécurisé
+✅ Si tu veux, je peux aussi te montrer :
+comment récupérer le password admin même si oublié totalement
+comment créer un second super admin via CLI
+comment reset password directement dans PostgreSQL Satellite (méthode ultime)
+Ce sont des techniques N3 / expert Satellite très utiles en production.
