@@ -1,0 +1,20 @@
+Voici une version professionnelle en anglais que tu peux directement mettre dans un ticket (ServiceNow / change / incident).
+Summary – LVM RAID1 Storage Configuration and I/O Performance Tuning
+A new storage configuration has been implemented on the server **Dell PowerEdge R760 to improve both data resilience and I/O performance.
+Two Dell Enterprise NVMe PM1735a 1.6TB disks were used to create a mirrored LVM RAID1 logical volume. This configuration provides data redundancy and ensures service continuity in case of a single disk failure.
+The following operations were performed:
+Initialization of the NVMe disks (nvme1n1 and nvme2n1)
+Creation of the Volume Group (VG)
+Creation of the Logical Volume (LV) using LVM RAID1 mirroring
+Creation of the XFS filesystem
+Mount configuration and persistence added in /etc/fstab
+To ensure optimal NVMe performance, several operating system tuning adjustments were also verified and applied:
+Confirmation of the none I/O scheduler, recommended for NVMe devices
+Adjustment of the read-ahead value to 4096 KB to improve sequential read performance
+Verification of the queue depth (nr_requests = 1023), suitable for high-performance NVMe devices
+Confirmation that the devices are detected as non-rotational (rotational = 0)
+Verification of maximum I/O size parameters (max_sectors_kb and max_hw_sectors_kb = 1024 KB)
+These settings allow the system to fully leverage the Linux NVMe multi-queue architecture, improving I/O efficiency and reducing latency for applications relying on this storage.
+The LVM mirror synchronization has been verified and completed successfully.
+The storage configuration is now fully operational, redundant, and optimized for NVMe performance.
+Si tu veux, je peux aussi te donner une version encore plus professionnelle (style RCA / CAB change / architecture note) utilisée dans les grands environnements Linux N3.
