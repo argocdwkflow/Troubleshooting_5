@@ -1,0 +1,129 @@
+---
+# tasks/rhsm_uuid_422_rescue.yml
+# Requires:
+#  - rhsm_register (result of initial register) available
+#  - satellite_register_ak, satellite_register_org
+#  - rhsm_register_argv (list command for retry) ideally already built
+
+- name: "RHSM | Detect duplicate UUID or RHSM cache issue"
+  ansible.builtin.set_fact:
+    rhsm_duplicate_uuid: >-
+      {{
+        (rhsm_register is defined) and
+        (
+          ('HTTP error' in (rhsm_register.stderr | default('')) and '422' in (rhsm_register.stderr | default('')))
+          or ('Unprocessable Entity' in (rhsm_register.stderr | default('')))
+          or ('DMI UUID' in (rhsm_register.stderr | default('')))
+          or ('matches other registered hosts' in (rhsm_register.stderr | default('')))
+        )
+      }}
+    rhsm_syspurpose_missing: >-
+      {{
+        (rhsm_register is defined) and
+        (
+          ('/var/lib/rhsm/cache/syspurpose.json' in (rhsm_register.stderr | default('')))
+          or ('No such file or directory' in (rhsm_register.stderr | default('')) and 'syspurpose.json' in (rhsm_register.stderr | default('')))
+        )
+      }}
+
+- name: "RHSM | Fail fast if error is not duplicate UUID or syspurpose cache issue"
+  ansible.builtin.fail:
+    msg: |
+      RHSM register failed and does not match supported rescue cases.
+      rc={{ rhsm_register.rc | default('N/A') }}
+      stderr={{ rhsm_register.stderr | default('') }}
+  when:
+    - not rhsm_duplicate_uuid
+    - not rhsm_syspurpose_missing
+
+# ------------------------------------------------------------
+# Common RHSM cache/facts repair
+# ------------------------------------------------------------
+
+- name: "RHSM | Remove cloned facts cache (facts.json)"
+  ansible.builtin.file:
+    path: /var/lib/rhsm/facts/facts.json
+    state: absent
+
+- name: "RHSM | Ensure RHSM facts/cache directories exist"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/rhsm/facts
+    - /var/lib/rhsm/facts
+    - /var/lib/rhsm/cache
+
+- name: "RHSM | Check syspurpose.json presence"
+  ansible.builtin.stat:
+    path: /var/lib/rhsm/cache/syspurpose.json
+  register: syspurpose_stat
+
+- name: "RHSM | Restore syspurpose.json if missing"
+  ansible.builtin.copy:
+    dest: /var/lib/rhsm/cache/syspurpose.json
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{}\n"
+  when:
+    - rhsm_syspurpose_missing or not syspurpose_stat.stat.exists
+
+# ------------------------------------------------------------
+# Duplicate UUID specific fix
+# ------------------------------------------------------------
+
+- name: "RHSM | Generate NEW UUID (force regeneration)"
+  ansible.builtin.command: uuidgen
+  register: new_uuid
+  changed_when: false
+  when: rhsm_duplicate_uuid
+
+- name: "RHSM | Set logical UUID (new one)"
+  ansible.builtin.set_fact:
+    rhsm_logical_uuid: "{{ new_uuid.stdout | trim }}"
+  when: rhsm_duplicate_uuid
+
+- name: "RHSM | Write /etc/rhsm/facts/uuid.facts (overwrite)"
+  ansible.builtin.copy:
+    dest: /etc/rhsm/facts/uuid.facts
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ {'dmi.system.uuid': rhsm_logical_uuid} | to_json }}\n"
+  when: rhsm_duplicate_uuid
+
+- name: "RHSM | Store logical UUID for audit"
+  ansible.builtin.copy:
+    dest: /etc/rhsm/rhsm_logical_uuid
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ rhsm_logical_uuid }}\n"
+  when: rhsm_duplicate_uuid
+
+# ------------------------------------------------------------
+# Refresh RHSM and retry
+# ------------------------------------------------------------
+
+- name: "RHSM | Update facts to apply custom UUID"
+  ansible.builtin.command: subscription-manager facts --update
+  register: facts_update
+  changed_when: false
+  failed_when: false
+
+- name: "RHSM | Clean subscription-manager cache"
+  ansible.builtin.command: subscription-manager clean
+  changed_when: false
+  failed_when: false
+
+- name: "RHSM | Retry register after rescue"
+  ansible.builtin.command:
+    argv: "{{ rhsm_register_argv + ['--force'] }}"
+  register: rhsm_register_retry
+  changed_when: false
+  failed_when: rhsm_register_retry.rc != 0
+  timeout: 300
