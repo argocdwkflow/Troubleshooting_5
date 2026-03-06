@@ -1,0 +1,185 @@
+Tu veux donc :
+Garder les VG et LV existants
+Reformater le filesystem
+Créer un RAID1 LVM avec deux disques NVMe
+Filesystem XFS
+RHEL (production)
+Je vais te donner la procédure propre N3 Linux. ⚡
+1️⃣ Situation actuelle (d’après ton écran)
+Tu as :
+LV :
+Copy code
+
+lv_sybase_dump  -> vg_dump   -> 650G
+lv_sybasetmp    -> vg_tempdb -> 130G
+Mount :
+Copy code
+
+/apps/sybase/dump/ESY3_FR_UAT_ASE
+/apps/sybasetmp/ESY3_FR_UAT_ASE
+Filesystem actuel :
+Copy code
+
+ext4
+Tu veux :
+Copy code
+
+XFS
++ RAID1 LVM
++ NVMe
+Disques :
+Copy code
+
+nvme0n1
+nvme1n1
+1.5 TB chacun
+2️⃣ Principe architecture finale
+Architecture recommandée :
+Copy code
+
+nvme0n1
+nvme1n1
+   │
+   └── LVM RAID1
+         │
+         VG
+         │
+         LV
+         │
+         XFS
+         │
+         mountpoint
+3️⃣ Arrêter application (important)
+Avant toute modification :
+Copy code
+
+umount /apps/sybase/dump/ESY3_FR_UAT_ASE
+umount /apps/sybasetmp/ESY3_FR_UAT_ASE
+Vérifier :
+Copy code
+
+mount | grep sybase
+4️⃣ Créer partitions NVMe
+Sur les deux disques :
+Copy code
+
+parted /dev/nvme0n1
+parted /dev/nvme1n1
+Créer :
+Copy code
+
+mklabel gpt
+mkpart primary 1MiB 100%
+set 1 lvm on
+Résultat :
+Copy code
+
+nvme0n1p1
+nvme1n1p1
+5️⃣ Créer Physical Volumes
+Copy code
+
+pvcreate /dev/nvme0n1p1
+pvcreate /dev/nvme1n1p1
+6️⃣ Ajouter dans les VG existants
+Pour dump :
+Copy code
+
+vgextend vg_dump /dev/nvme0n1p1 /dev/nvme1n1p1
+Pour tempdb :
+Copy code
+
+vgextend vg_tempdb /dev/nvme0n1p1 /dev/nvme1n1p1
+7️⃣ Supprimer LV actuel
+Puisque tu veux recréer RAID1.
+Copy code
+
+lvremove /dev/vg_dump/lv_sybase_dump
+lvremove /dev/vg_tempdb/lv_sybasetmp
+8️⃣ Créer LVM RAID1
+Dump
+Copy code
+
+lvcreate --type raid1 \
+-m1 \
+-L 650G \
+-n lv_sybase_dump \
+vg_dump \
+/dev/nvme0n1p1 \
+/dev/nvme1n1p1
+TempDB
+Copy code
+
+lvcreate --type raid1 \
+-m1 \
+-L 130G \
+-n lv_sybasetmp \
+vg_tempdb \
+/dev/nvme0n1p1 \
+/dev/nvme1n1p1
+9️⃣ Vérifier RAID1
+Copy code
+
+lvs -a -o +devices
+Exemple attendu :
+Copy code
+
+lv_sybase_dump rwi-a-r--- 650G raid1 nvme0n1p1 nvme1n1p1
+🔟 Créer filesystem XFS
+Dump :
+Copy code
+
+mkfs.xfs /dev/vg_dump/lv_sybase_dump
+Tempdb :
+Copy code
+
+mkfs.xfs /dev/vg_tempdb/lv_sybasetmp
+1️⃣1️⃣ Monter filesystem
+Copy code
+
+mount /dev/vg_dump/lv_sybase_dump /apps/sybase/dump/ESY3_FR_UAT_ASE
+mount /dev/vg_tempdb/lv_sybasetmp /apps/sybasetmp/ESY3_FR_UAT_ASE
+1️⃣2️⃣ Ajouter fstab
+Copy code
+
+/dev/vg_dump/lv_sybase_dump   /apps/sybase/dump/ESY3_FR_UAT_ASE   xfs  defaults,noatime  0 0
+/dev/vg_tempdb/lv_sybasetmp   /apps/sybasetmp/ESY3_FR_UAT_ASE     xfs  defaults,noatime  0 0
+1️⃣3️⃣ Vérifier
+Copy code
+
+lsblk
+lvs -a
+df -h
+⚠️ Point très important (NVMe)
+Pour optimiser :
+Copy code
+
+echo none > /sys/block/nvme0n1/queue/scheduler
+echo none > /sys/block/nvme1n1/queue/scheduler
+⭐ Optimisation XFS recommandée pour DB
+Tu peux aussi créer :
+Copy code
+
+mkfs.xfs -f \
+-d su=128k,sw=2 \
+-l size=128m \
+/dev/vg_dump/lv_sybase_dump
+🚀 Résultat final
+Copy code
+
+nvme0n1p1
+nvme1n1p1
+      │
+      RAID1 LVM
+      │
+      vg_dump
+      │
+      lv_sybase_dump
+      │
+      XFS
+      │
+/apps/sybase/dump
+💡 Si tu veux, je peux aussi te montrer une architecture encore meilleure pour ton cas (Sybase / DB) :
+👉 NVMe RAID10 LVM + XFS optimisé DB
+Cela peut améliorer les performances I/O de 40-60% pour les dumps et tempdb.
+Et c’est souvent utilisé dans les environnements SAP / Oracle / Sybase production.
