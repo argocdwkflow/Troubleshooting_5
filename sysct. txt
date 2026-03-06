@@ -1,0 +1,9 @@
+vm.swappiness = 1
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+vm.dirty_expire_centisecs = 500
+vm.dirty_writeback_centisecs = 100
+
+blockdev --getra
+
+blockdev --setra 8192 /dev/vg_xxxx/yyyyy
