@@ -1,0 +1,5 @@
+for f in /sys/block/nvme1n1/queue/*; do
+    echo "=== $(basename $f) ==="
+    cat $f
+    echo
+done
