@@ -1,0 +1,8 @@
+Additional Update
+
+During the maintenance window, a "systemd-sysctl" service error was detected after the reboot.
+The issue was related to an incorrect or incompatible sysctl parameter applied during the kernel upgrade.
+
+The configuration was reviewed and corrected, and the "systemd-sysctl" service is now running normally. No further impact has been observed on the system or cluster services.
+
+The node is currently stable and operating as expected within the cluster.
