@@ -1,0 +1,12 @@
+Voici une version améliorée de l’argument en anglais à déposer dans le ticket ServiceNow, en mentionnant que ce serveur possède plus de ressources cluster que les autres nodes.
+Writing
+Update – Kernel / Veritas Patch Duration
+The kernel upgrade took longer than expected because the server is part of a Veritas InfoScale / VCS cluster environment and hosts a larger number of cluster resources compared to the other nodes.
+During the patching process, several additional operations are required:
+Veritas kernel modules (vxio, vxdmp, vxfen, etc.) must be rebuilt and relinked to match the new kernel version.
+The system rebuilds the initramfs, including storage, multipath, and Veritas drivers.
+During the reboot phase, the server performs a full SAN device scan and multipath initialization.
+The node also contains a higher number of VCS service groups, disk groups, and mounted filesystems, which increases the time required for storage discovery and cluster validation.
+Because this node manages more cluster resources than the other servers, the startup validation and storage initialization phases require additional time before the node can fully rejoin the cluster.
+This behavior is expected in large clustered environments and does not indicate an issue with the patching process.
+Si vous voulez, je peux aussi vous donner une phrase très courte (2 lignes) pour ticket ServiceNow quand le manager ne veut pas lire un long texte.
