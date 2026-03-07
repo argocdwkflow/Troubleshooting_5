@@ -1,0 +1,5 @@
+# you can use thèses parametrz for 1.5t RAM in Sybase server
+kernel.shmmax = 1480000000000
+kernel.shmall = 361000000
+kernel.shmmni = 8192
+kernel.sem = 250 64000 100 4096
