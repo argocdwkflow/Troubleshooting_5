@@ -1,0 +1,8 @@
+SSH Access Performance – Quick Summary
+The server was analyzed using the top command to determine the root cause of the slow SSH access. Overall, the system resources appear healthy and not critically overloaded.
+The system shows a load average of around 2.7, which is acceptable depending on the number of CPU cores available. CPU utilization indicates that the system is mostly idle, with approximately 85% idle CPU time, meaning the processor is not globally saturated. Disk I/O is also healthy, as there is no significant I/O wait, suggesting that the storage subsystem is not causing delays.
+Memory usage is also within normal limits. The server has approximately 191 GB of RAM, with only around 20 GB actively used, while the rest is mostly allocated to cache. Swap usage is minimal at around 2.5 GB, which is not critical and does not indicate memory pressure.
+However, two SAS application processes are consuming nearly 100% CPU each, which means they are heavily using two CPU cores. While this does not fully saturate the system, it may slightly impact interactive tasks such as SSH sessions, especially if the server has a limited number of CPU cores or a high number of running threads.
+In addition, the system has over 1100 running tasks, which may contribute to minor scheduling delays.
+In conclusion, the server itself does not appear to be under heavy resource pressure. The slow SSH access is more likely related to application workload (SAS processes), DNS reverse lookup delays, or authentication mechanisms such as LDAP/SSSD rather than a hardware or OS resource bottleneck.
+Further checks on SSH configuration (UseDNS, GSSAPIAuthentication) and authentication services are recommended to identify the exact root cause.
