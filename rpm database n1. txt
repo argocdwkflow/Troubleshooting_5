@@ -1,0 +1,2 @@
+Starting with Red Hat Enterprise Linux 9, the RPM database implementation uses SQLite as the backend database format.
+In previous versions such as RHEL 7, the RPM database relied on Berkeley DB (BDB). This implementation was known to be more sensitive to corruption, particularly in cases of interrupted transactions, concurrent package management operations, or unexpected system shutdowns.
