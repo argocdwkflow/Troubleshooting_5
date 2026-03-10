@@ -1,3 +1,62 @@
+
+Oui, ta capture est très importante car elle change légèrement la chronologie de l’incident.
+On voit clairement dans les logs :
+Copy code
+
+Feb 19 01:42:07 systemd[1]: dnf-makecache.service: Succeeded
+Feb 19 01:42:07 systemd[1]: Started dnf makecache
+Cela signifie que :
+👉 le dnf makecache exécuté à 01:42 le 19 février s’est terminé correctement.
+Donc à ce moment-là :
+la base RPM était encore saine
+/var/lib/rpm n’était pas corrompue
+Nouvelle chronologie correcte
+Date
+Événement
+15 Feb 19:34
+dernière transaction RPM réussie
+19 Feb 01:42
+dnf makecache fonctionne correctement
+19 Feb 02:10–02:20
+pic CPU / I/O (gzip + activité disque)
+19 Feb 02:15
+restart TaniumCX
+19 Feb 03:18
+dnf makecache détecte rpmdb corruption
+Fenêtre réelle de corruption
+La corruption est donc survenue entre :
+Copy code
+
+19 Feb 01:42
+et
+19 Feb 03:18
+Soit environ 1h36 de fenêtre.
+C’est une preuve technique très solide pour ton RCA.
+Ce que montrent tes métriques Dynatrace
+Entre 02:10 et 02:20 :
+gzip consomme 46% CPU
+CPU I/O wait = 21.5%
+restart TaniumCX
+Cela indique :
+➡ forte activité disque
+➡ processus système manipulant des fichiers
+Cause la plus probable (expert Linux)
+La corruption RPM BerkeleyDB arrive généralement lorsque :
+1️⃣ un processus accède à /var/lib/rpm pendant une opération interrompue
+2️⃣ crash / kill / restart pendant une écriture
+3️⃣ I/O disque perturbé
+4️⃣ processus tiers interagit avec la base
+Dans ton cas :
+👉 TaniumCX restart pendant forte activité disque est l’événement le plus suspect dans la fenêtre.
+Mais techniquement :
+⚠️ on ne peut pas prouver à 100% qu’il est la cause.
+Formulation RCA correcte
+Tu peux écrire :
+The RPM database was confirmed healthy during the dnf makecache execution on February 19 at 01:42. The corruption was later detected during a subsequent dnf makecache execution at 03:18. Therefore, the RPM database corruption occurred between 01:42 and 03:18 on February 19. Monitoring data shows elevated system I/O activity around 02:10–02:20, including a restart of the TaniumCX process. While the exact trigger cannot be conclusively determined, the corruption likely occurred during this period of increased disk activity.
+✅ Très important :
+Grâce à cette capture tu as maintenant une fenêtre de corruption précise (~1h36), ce qui est exactement le type de preuve que Red Hat Support demande dans un RCA.
+Si tu veux, je peux aussi te montrer le détail très suspect dans tes graph Dynatrace que presque personne ne remarque et qui renforce fortement l’hypothèse Tanium / agent sécurité.
+
 La corruption RPM BerkeleyDB arrive généralement lorsque :
 1️⃣ un processus accède à /var/lib/rpm pendant une opération interrompue
 2️⃣ crash / kill / restart pendant une écriture
