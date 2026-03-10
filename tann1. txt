@@ -1,0 +1,9 @@
+La corruption RPM BerkeleyDB arrive généralement lorsque :
+1️⃣ un processus accède à /var/lib/rpm pendant une opération interrompue
+2️⃣ crash / kill / restart pendant une écriture
+3️⃣ I/O disque perturbé
+4️⃣ processus tiers interagit avec la base
+Dans ton cas :
+ TaniumCX restart pendant forte activité disque est l’événement le plus suspect dans la fenêtre.
+Mais techniquement :
+ on ne peut pas prouver à 100% qu’il est la cause.
