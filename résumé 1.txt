@@ -1,6 +1,74 @@
-Subject: Observation of High CPU Usage from SAS Processes
-Hello,
-During the investigation of the slow SSH access on the server, we analyzed the system resources and running processes. The server itself has sufficient capacity (16 CPUs and adequate memory), and no operating system limits are applied to the SAS processes.
-However, we observed that a SAS process is running with multiple threads, which allows the application to use several CPU cores simultaneously. This multithreading behavior can temporarily increase CPU consumption and may affect interactive responsiveness such as SSH sessions.
-Could you please verify if any heavy SAS jobs or batch workloads are currently running on this server?
-Thank you for your support.
+Bonne idée 👍 — dans ton cas plusieurs PID SAS appartiennent au même utilisateur (pamow01), donc il faut calculer la consommation CPU totale par utilisateur.
+Voici les méthodes utilisées par les admins Linux N3.
+1️⃣ Calcul CPU total par utilisateur (simple)
+Bash
+Copy code
+ps -eo user,%cpu --no-headers | awk '{cpu[$1]+=$2} END {for (u in cpu) printf "%s %.2f%%\n", u, cpu[u]}'
+Exemple résultat :
+Copy code
+
+pamow01 320.5%
+root 5.2%
+pfass 2.1%
+⚠️ 320% = 3.2 CPU utilisés.
+2️⃣ Voir seulement SAS pour cet utilisateur
+Bash
+Copy code
+ps -u pamow01 -o pid,%cpu,cmd --sort=-%cpu | grep sas
+3️⃣ Calcul CPU total pour SAS uniquement
+Bash
+Copy code
+ps -u pamow01 -o %cpu,cmd | grep sas | awk '{sum+=$1} END {print "Total CPU:",sum,"%"}'
+Exemple :
+Copy code
+
+Total CPU: 285.4 %
+Donc SAS utilise ≈ 3 CPU.
+4️⃣ Voir combien de CPU SAS utilise réellement
+Bash
+Copy code
+ps -u pamow01 -o pid,%cpu,cmd | grep sas
+Puis :
+Bash
+Copy code
+ps -u pamow01 | wc -l
+5️⃣ Vue avancée (très utile)
+Bash
+Copy code
+top -u pamow01
+ou
+Bash
+Copy code
+htop
+puis filtrer avec :
+Copy code
+
+F4 → pamow01
+Interprétation
+Si tu vois par exemple :
+Copy code
+
+PID1  100%
+PID2   95%
+PID3   80%
+Total :
+Copy code
+
+≈ 275%
+Donc :
+Copy code
+
+≈ 2.7 CPU utilisés
+Sur une machine 16 CPU → c'est faible.
+Conclusion pour ton cas
+Tu as :
+plusieurs PID SAS
+chacun utilise un thread CPU
+Donc l'application SAS :
+lance plusieurs processus
+mais pas forcément bien parallélisés
+Petit script très pratique (N3 Linux)
+Bash
+Copy code
+ps -u pamow01 -o %cpu= | awk '{sum+=$1} END {print "Total CPU used:",sum,"%"}'
+✅ Si tu veux, je peux aussi te montrer une commande très puissante utilisée par les ingénieurs Linux pour voir immédiatement combien de CPU chaque utilisateur consomme sur le serveur (super utile dans les environnements SAS / Oracle / Hadoop).
