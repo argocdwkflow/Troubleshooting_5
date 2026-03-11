@@ -1,0 +1,5 @@
+Il manque surtout quelques durcissements pour rendre la MR plus robuste en production.
+Aujourd’hui, le code vérifie surtout si firewalld est enabled, mais il faudrait aussi vérifier s’il est active/running, puis faire clairement stop + disable + mask avant éventuelle suppression du package.
+Il faudrait aussi mieux gérer les états retournés par systemctl is-enabled (enabled, disabled, masked, etc.) au lieu de tester seulement le code retour.
+Côté python3.13, il manque une vérification que le plugin dnf versionlock est bien disponible avant de faire le lock/unlock, pour éviter un échec du script.
+Enfin, ajouter un peu plus de logs explicites aiderait pour le troubleshooting et la validation de la MR.
