@@ -1,0 +1,80 @@
+#!/bin/bash
+set -euo pipefail
+
+ORG=""
+OUT="/root/repos_export_with_published.csv"
+TMPDIR="/tmp/repos_export.$$"
+
+mkdir -p "$TMPDIR"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+FIELDS="Organization,Product/name,Http proxy/name,Http proxy/http proxy policy,Download policy,Mirroring policy,Name,Label,Content type,Content label,Url,Published at"
+
+echo '"ORGANIZATION_NAME","PRODUCT_NAME","HTTP_PROXY_NAME","HTTP_PROXY_POLICY","DOWNLOAD_POLICY","MIRRORING_POLICY","NAME","LABEL","CONTENT_TYPE","CONTENT_LABEL","URL","PUBLISHED_AT"' > "$OUT"
+
+hammer --no-headers --csv repository list \
+  --organization "$ORG" \
+  --fields "Id" | tr -d '"' | while read -r ID
+do
+  INFO_CSV="$TMPDIR/repo_${ID}.csv"
+
+  hammer --csv repository info \
+    --id "$ID" \
+    --fields "$FIELDS" > "$INFO_CSV"
+
+  python3 - "$INFO_CSV" >> "$OUT" <<'PY'
+import csv
+import sys
+
+path = sys.argv[1]
+
+wanted = {
+    "ORGANIZATION_NAME": ["Organization", "Organisation"],
+    "PRODUCT_NAME": ["Product/name"],
+    "HTTP_PROXY_NAME": ["Http proxy/name", "HTTP Proxy/name", "Http Proxy/name"],
+    "HTTP_PROXY_POLICY": ["Http proxy/http proxy policy", "HTTP Proxy/http proxy policy", "Http Proxy/http proxy policy"],
+    "DOWNLOAD_POLICY": ["Download policy"],
+    "MIRRORING_POLICY": ["Mirroring policy"],
+    "NAME": ["Name"],
+    "LABEL": ["Label"],
+    "CONTENT_TYPE": ["Content type"],
+    "CONTENT_LABEL": ["Content label"],
+    "URL": ["Url", "URL"],
+    "PUBLISHED_AT": ["Published at", "Published At"],
+}
+
+with open(path, newline="", encoding="utf-8") as f:
+    rows = list(csv.DictReader(f))
+
+if not rows:
+    values = {k: "" for k in wanted}
+else:
+    row = rows[0]
+    values = {}
+    for out_col, possible_names in wanted.items():
+        val = ""
+        for key in possible_names:
+            if key in row and row[key] is not None:
+                val = row[key]
+                break
+        values[out_col] = val
+
+writer = csv.writer(sys.stdout, quoting=csv.QUOTE_ALL)
+writer.writerow([
+    values["ORGANIZATION_NAME"],
+    values["PRODUCT_NAME"],
+    values["HTTP_PROXY_NAME"],
+    values["HTTP_PROXY_POLICY"],
+    values["DOWNLOAD_POLICY"],
+    values["MIRRORING_POLICY"],
+    values["NAME"],
+    values["LABEL"],
+    values["CONTENT_TYPE"],
+    values["CONTENT_LABEL"],
+    values["URL"],
+    values["PUBLISHED_AT"],
+])
+PY
+done
+
+echo "Export terminé : $OUT"
