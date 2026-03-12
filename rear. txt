@@ -1,0 +1,75 @@
+ (Relax-and-Recover) signale qu’une librairie requise par systemd est absente dans l’environnement de recovery :
+Copy code
+
+/usr/lib64/systemd/libsystemd-core-252.so requires additional libraries
+libsystemd-shared-252.so => not found
+Donc ce n’est pas forcément que la librairie n’existe pas sur l’OS, mais plutôt que ReaR ne l’inclut pas dans l’image de recovery.
+1- Vérifier si la librairie existe sur l’OS
+Sur ton serveur RHEL :
+Bash
+Copy code
+ls -l /usr/lib64/systemd/libsystemd-shared-252.so
+ou
+Bash
+Copy code
+rpm -qf /usr/lib64/systemd/libsystemd-shared-252.so
+Normalement elle vient du package :
+Bash
+Copy code
+systemd
+Vérifie aussi :
+Bash
+Copy code
+rpm -qa | grep systemd
+2- Si la librairie n’existe pas réellement
+Réinstaller le package :
+Bash
+Copy code
+dnf reinstall systemd -y
+ou
+Bash
+Copy code
+dnf install systemd -y
+3- Si la librairie existe mais ReaR ne la prend pas
+C’est le cas le plus probable.
+Ajoute la librairie dans la config ReaR :
+Bash
+Copy code
+vi /etc/rear/local.conf
+Ajoute :
+Bash
+Copy code
+COPY_AS_IS+=( /usr/lib64/systemd/libsystemd-shared-252.so )
+4- Workaround proposé dans ton message
+Celui qui est affiché dans l’écran :
+Copy code
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/systemd
+Ajoute dans :
+Bash
+Copy code
+/etc/rear/local.conf
+Copy code
+
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/lib64/systemd"
+5- Regénérer l’image ReaR
+Ensuite :
+Bash
+Copy code
+rear -v mkrescue
+ou
+Bash
+Copy code
+rear -v mkbackup
+6- Vérification dépendances
+Tu peux vérifier toutes les dépendances :
+Bash
+Copy code
+ldd /usr/lib64/systemd/libsystemd-core-252.so
+ Explication technique (important)
+Depuis RHEL9 / systemd 252, certaines librairies sont privées à systemd (/usr/lib64/systemd/).
+ReaR ne les copie pas automatiquement, ce qui provoque ce warning.
+ Solution la plus propre en production :
+Copy code
+
+COPY_AS_IS+=( /usr/lib64/systemd/libsystemd-shared-252.so )
