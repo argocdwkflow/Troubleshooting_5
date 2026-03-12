@@ -1,1 +1,0 @@
-Following the discussion with m, we concluded that the cleanup and log rotation for applications like Dynatrace are already managed on the system side. It would be better to inform application owners to store their application logs in a dedicated location and manage the cleanup or rotation themselves.
