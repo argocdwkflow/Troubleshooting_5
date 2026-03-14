@@ -1,0 +1,50 @@
+Voici le script unique complet qui fait les 4 étapes :
+crée les Content Views simples avec le même nom et le même label
+ajoute les repositories aux CV en recherchant les repositories par name
+crée les Composite Content Views avec le même nom et le même label
+ajoute les Content Views composants dans les CCV
+Il s’appuie sur tes fichiers export :
+content_views_full.csv
+content_view_repositories.csv
+ccv_components.csv
+Ce que fait ce script
+Il conserve pour chaque CV et CCV :
+le même name
+le même label
+et pour les repositories :
+il fait le matching par repository name
+il n’utilise pas le label du repository
+Ordre d’exécution déjà intégré
+Le script suit le bon ordre :
+création des CV simples
+ajout des repositories
+création des CCV
+ajout des composants
+Fichiers attendus
+Place dans le même répertoire :
+Bash
+Copy code
+content_views_full.csv
+content_view_repositories.csv
+ccv_components.csv
+import_all_cv_ccv.sh
+Puis lance :
+Bash
+Copy code
+chmod +x import_all_cv_ccv.sh
+./import_all_cv_ccv.sh
+Point d’attention important
+Ton CSV est en vrai CSV avec guillemets, mais comme certains champs peuvent contenir des virgules, le parsing bash avec IFS=',' read ... peut devenir fragile si un champ description contient des virgules.
+Dans ton export actuel, ça semble simple et ça passera probablement.
+Pour un usage plus robuste en prod, la meilleure version est en Python ou avec un vrai parseur CSV.
+Recommandation
+Avant de lancer en masse, teste d’abord sur :
+1 CV simple
+1 CCV
+2 ou 3 repositories
+par exemple en gardant une copie réduite des CSV.
+Je peux te donner juste après une version plus robuste qui :
+lit correctement les CSV avec Python
+garde le même name et le même label
+fait le matching repository par name
+génère un rapport final succès / erreur.
