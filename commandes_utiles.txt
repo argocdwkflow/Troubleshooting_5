@@ -1,0 +1,40 @@
+Les ingénieurs système de Netflix ont décidé de partager dix commandes ultrarapides pour diagnostiquer rapidement les problèmes de lenteurs sur LINUX. J’ai trouvé ça intéressant vu le traffic monstrueux que génère la plateforme de streaming.
+
+Voici la check-list à lancer proposé par ces ingénieurs hautement qualifié ! a
+
+Le Sommaire [Afficher]
+
+Top 10 commandes pour diagnostiquer un serveur Linux lent
+Les ingénieurs californiens suivent toujours le même ordre. Ils enchaînent ces commandes :
+
+uptime : vérifie la charge moyenne et l’heure du pic.
+top -bn1 | head -20 : dresse la liste des processus gloutons.
+vmstat 1 5 : repère les pauses CPU ou le swapping.
+iostat -xz 1 3 : traque la saturation disque, souvent oubliée.
+free -m : mesure la mémoire réellement disponible.
+ss -pant : détecte une pluie de connexions réseau.
+sar -n DEV 1 3 : isole un goulot d’étranglement réseau.
+df -hT | sort -k6 -r : repère une partition pleine.
+dmesg | tail -50 : capture un driver ou un RAID qui souffre.
+journalctl -p 3 -n 30 : liste les erreurs critiques du noyau.
+Si une ligne dépasse un seuil critique (CPU > 5 de load moyenne par cœur, IO wait > 30 %), l’équipe déclenche immédiatement une mitigation ou un scaling automatique.
+
+Le experts systèmes se focaliser sur deux éléments, la charge CPU et le temps d’attente disque. En dessous, les autres métriques prennent moins de poids.
+
+CPU bound : load > 80 % + peu de IO wait = optimiser le code ou ajouter des cœurs.
+I/O bound : IO wait > 20 % + latence disque > 10 ms = déplacer sur SSD/NVMe.
+Memory bound : swap actif + free
+.
+Automatiser le diagnostic comme les ingénieurs Netflix
+
+Script Bash de 12 lignes pour un reporting express
+Plutôt que de saisir manuellement dix commandes, un mini script compile tout dans un seul fichier horodaté.
+
+Pré-fixer #!/usr/bin/env bash pour rester portable.
+Enchaîner chaque commande dans une fonction claire.
+Rediriger la sortie vers /var/log/diag-$(date +%F_%Hh%M).log.
+Ajouter un grep -i error final pour repérer immédiatement les anomalies.
+Programmer la tâche via systemd-timer afin de garder la main sur le scheduling.
+Résultat : un fichier unique consultable par Grafana ou envoyé à vote technos d’astreinte.
+
+https://netflixtechblog.com/linux-performance-analysis-in-60-000-milliseconds-accc10403c55
