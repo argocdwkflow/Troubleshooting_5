@@ -1,0 +1,5 @@
+replace
+pathmunge ${NEW_PATH} after
+by
+type pathmunge >/dev/null 2>&1 && pathmunge "${NEW_PATH}" after || PATH="${PATH}:${NEW_PATH}"
+
