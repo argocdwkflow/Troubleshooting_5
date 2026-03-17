@@ -1,4 +1,0 @@
-J’ai constaté, à partir de l’historique du serveur Satellite core daté du 1er juillet 2025, que certains services McAfee ont été arrêtés manuellement.
-Il semble que cette action ait été réalisée afin de contourner le blocage du package masscan lors de la synchronisation du repository EPEL 8 Everything.
-Cependant, je pense que nous ne disposons pas des droits nécessaires pour arrêter les services McAfee dans ce type de situation. En effet, McAfee identifie ce RPM comme étant blacklisté conformément à sa politique de sécurité.
-Je soulève ce point car la synchronisation du repository EPEL 8 Everything depuis le Satellite Core vers le Satellite CIS est actuellement bloquée à cause de ce package masscan.
