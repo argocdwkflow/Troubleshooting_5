@@ -1,0 +1,30 @@
+Root Cause:
+
+The issue is caused by storage I/O saturation on the server.
+
+Evidence:
+
+- Load average > 100 while CPU remains mostly idle (~94%)
+- Disk utilization close to 100% (iostat)
+- Multiple processes blocked in D state (uninterruptible sleep)
+- High write activity observed on underlying devices
+
+Conclusion:
+
+The system is experiencing a severe I/O bottleneck, causing processes to block and leading to unresponsiveness during patching operations.
+
+This confirms a storage performance issue rather than an application or Ansible problem.
+
+
+We have identified a storage I/O bottleneck on the server.
+
+Evidence:
+- Load average >100 with CPU idle ~94%
+- Disk utilization reaching ~95–100%
+- Multiple processes stuck in D state (blocked on I/O)
+
+Impact:
+The server becomes unresponsive during patching, leading to automation timeout.
+
+Request:
+Could you please check datastore latency, contention, and queue saturation on the underlying VMware storage?
