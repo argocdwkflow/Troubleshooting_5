@@ -1,0 +1,1 @@
+The VM was intentionally shut down from vCenter through the “Initiate guest OS shutdown” action on 13/03/2026 at 15:46:17 by the account svcappsvm. This confirms that the shutdown was administratively triggered and was not caused by an OS crash, kernel issue, or infrastructure failure. At present, the server is up and running normally.
