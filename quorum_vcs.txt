@@ -1,0 +1,83 @@
+Oui, avec 3 nœuds quorum + 2 nœuds application, l’ordre logique change un peu.
+Tu as donc en pratique :
+3 nœuds quorum / vote / witness
+2 nœuds cluster applicatifs Veritas
+total 5 VM
+Dans ce cas, on ne commence pas par patcher tous les quorum d’un coup.
+Le principe est :
+garder en permanence une majorité de quorum disponible et ne patcher qu’un seul nœud applicatif à la fois.
+Ordre recommandé
+1) Patcher les nœuds quorum un par un
+Commence par les 3 nœuds quorum, mais séquentiellement :
+quorum1 → patch → reboot → vérification
+quorum2 → patch → reboot → vérification
+quorum3 → patch → reboot → vérification
+Ne jamais arrêter/rebooter les 3 ensemble.
+Évite même d’en faire 2 en parallèle si tu veux rester prudent.
+Le but :
+conserver le vote / la majorité
+éviter de fragiliser le cluster avant de toucher aux nœuds applicatifs
+2) Patcher ensuite le nœud applicatif passif
+Une fois les quorum stables :
+identifier le nœud applicatif qui ne porte pas les service groups
+le garder passif
+patch Veritas RPM
+patch kernel / OS
+reboot
+vérifier retour cluster OK
+3) Basculer les ressources sur ce nœud patché
+Quand le premier nœud revient sain :
+switch des groupes applicatifs vers lui
+vérifier que les ressources montent bien
+contrôler applications, IP, FS, DG, etc.
+4) Patcher le second nœud applicatif
+Ensuite seulement :
+patch RPM Veritas
+patch kernel / OS
+reboot
+vérifications
+5) Vérification finale
+À la fin :
+tous les quorum up
+2 nœuds cluster up
+service groups online
+fencing / quorum OK
+versions cohérentes
+Ordre machine par machine
+Ordre global conseillé
+Quorum 1
+Quorum 2
+Quorum 3
+Node applicatif passif
+Bascule applicative
+Node applicatif restant
+Ordre sur chaque nœud applicatif
+Sur chaque node Veritas, fais dans cet ordre :
+patch RPM Veritas
+patch kernel / OS
+reboot
+contrôles cluster
+Pourquoi cet ordre :
+il vaut mieux que les packages Veritas soient déjà à jour avant de booter sur le nouveau kernel
+surtout si modules/kernel support sont concernés
+La règle la plus importante :
+ne pas redémarrer sur un nouveau kernel si la version Veritas installée ne le supporte pas encore.
+Ce qu’il faut éviter
+À éviter absolument :
+patcher les 3 quorum ensemble
+patcher les 2 nœuds applicatifs ensemble
+faire la bascule applicative avant validation complète du 1er nœud patché
+booter sur un kernel non supporté par la version Veritas en place
+Version très courte
+Avec 3 quorum + 2 applicatifs :
+Quorum1 → Quorum2 → Quorum3 → App node passif → bascule → second app node
+Et sur chaque nœud applicatif :
+RPM Veritas → patch kernel/OS → reboot → checks
+Conseil terrain
+Si tu veux le plus sûr :
+un seul reboot à la fois
+un seul quorum à la fois
+un seul app node à la fois
+validation complète après chaque reboot
+Comme ça, même en cas de souci, tu gardes toujours assez de nœuds sains pour diagnostiquer sans mettre le cluster entier en risque.
+Je peux te rédiger maintenant un runbook exact de maintenance avec commandes hastatus, hagrp, hasys, gabconfig, vxfenadm, vxdctl, avant/après reboot.
